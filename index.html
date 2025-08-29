@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Healthcare Data Pipeline Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn.paused {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+        }
+
+        .status {
+            color: #27ae60;
+            font-weight: 600;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: #27ae60;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .metric-card.alert {
+            border-left: 5px solid #e74c3c;
+            animation: alertPulse 2s infinite;
+        }
+
+        @keyframes alertPulse {
+            0%, 100% { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); }
+            50% { box-shadow: 0 10px 30px rgba(231, 76, 60, 0.3); }
+        }
+
+        .metric-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .metric-title {
+            font-size: 1rem;
+            color: #666;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-icon {
+            font-size: 1.5rem;
+            opacity: 0.7;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .metric-change {
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .metric-change.positive {
+            color: #27ae60;
+        }
+
+        .metric-change.negative {
+            color: #e74c3c;
+        }
+
+        .charts-section {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chart-placeholder {
+            height: 300px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .performance-chart {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .chart-line {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            height: 2px;
+            background: linear-gradient(90deg, #27ae60, #f39c12, #e74c3c, #27ae60);
+            border-radius: 2px;
+            animation: chartAnimation 8s infinite;
+        }
+
+        @keyframes chartAnimation {
+            0%, 100% { transform: scaleY(1); }
+            25% { transform: scaleY(3); }
+            50% { transform: scaleY(0.5); }
+            75% { transform: scaleY(2); }
+        }
+
+        .alert-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .alert-item.critical {
+            background: #f8d7da;
+            border-left-color: #e74c3c;
+        }
+
+        .alert-icon {
+            font-size: 1.2rem;
+        }
+
+        .alert-text {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+
+        .alert-time {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .tabs-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .tabs-header {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .tab {
+            padding: 15px 25px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .tab-content {
+            padding: 30px;
+            min-height: 300px;
+        }
+
+        .compliance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .compliance-item {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .compliance-score {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #27ae60;
+            margin-bottom: 10px;
+        }
+
+        .dag-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .dag-name {
+            font-weight: 600;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-running {
+            background: #cce5ff;
+            color: #0056b3;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        @media (max-width: 768px) {
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabs-header {
+                overflow-x: auto;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <h1>Healthcare Data Pipeline Dashboard</h1>
+            <p>Real-time monitoring of ETL workflows, data quality, and regulatory compliance</p>
+            <div class="controls">
+                <button id="toggleBtn" class="btn">⏸️ Pause</button>
+                <div class="status">
+                    <div class="status-dot"></div>
+                    <span id="statusText">Live Updates</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card" id="recordsCard">
+                <div class="metric-header">
+                    <span class="metric-title">Daily Records</span>
+                    <span class="metric-icon">📊</span>
+                </div>
+                <div class="metric-value" id="recordsValue">2.4M</div>
+                <div class="metric-change positive" id="recordsChange">↗ +12.3% vs yesterday</div>
+            </div>
+
+            <div class="metric-card" id="successCard">
+                <div class="metric-header">
+                    <span class="metric-title">Success Rate</span>
+                    <span class="metric-icon">✅</span>
+                </div>
+                <div class="metric-value" id="successValue">99.9%</div>
+                <div class="metric-change positive" id="successChange">↗ +0.2% vs last hour</div>
+            </div>
+
+            <div class="metric-card" id="latencyCard">
+                <div class="metric-header">
+                    <span class="metric-title">Avg Latency</span>
+                    <span class="metric-icon">⚡</span>
+                </div>
+                <div class="metric-value" id="latencyValue">89ms</div>
+                <div class="metric-change positive" id="latencyChange">↘ -15ms vs last hour</div>
+            </div>
+
+            <div class="metric-card" id="errorsCard">
+                <div class="metric-header">
+                    <span class="metric-title">Error Rate</span>
+                    <span class="metric-icon">🚨</span>
+                </div>
+                <div class="metric-value" id="errorsValue">0.1%</div>
+                <div class="metric-change negative" id="errorsChange">↗ +0.05% vs last hour</div>
+            </div>
+        </div>
+
+        <div class="charts-section">
+            <div class="chart-card">
+                <div class="chart-title">
+                    📈 Pipeline Performance (24h)
+                </div>
+                <div class="chart-placeholder">
+                    <div class="performance-chart">
+                        <div class="chart-line"></div>
+                        <div style="position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); color: #666; font-size: 0.9rem;">
+                            Real-time performance visualization
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-title">
+                    🚨 Recent Alerts
+                </div>
+                <div id="alertsContainer">
+                    <div class="alert-item">
+                        <span class="alert-icon">⚠️</span>
+                        <div class="alert-text">High latency detected in validation stage</div>
+                        <div class="alert-time">2m ago</div>
+                    </div>
+                    <div class="alert-item critical">
+                        <span class="alert-icon">🚨</span>
+                        <div class="alert-text">Schema validation failed for HL7 batch</div>
+                        <div class="alert-time">15m ago</div>
+                    </div>
+                    <div class="alert-item">
+                        <span class="alert-icon">✅</span>
+                        <div class="alert-text">Snowflake connection restored</div>
+                        <div class="alert-time">1h ago</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs-section">
+            <div class="tabs-header">
+                <button class="tab active" onclick="showTab('overview')">Overview</button>
+                <button class="tab" onclick="showTab('validation')">Data Validation</button>
+                <button class="tab" onclick="showTab('compliance')">Compliance</button>
+                <button class="tab" onclick="showTab('airflow')">Airflow DAGs</button>
+            </div>
+
+            <div id="overview" class="tab-content">
+                <h3 style="margin-bottom: 20px;">System Overview</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                        <h4>🔄 ETL Pipeline Status</h4>
+                        <p>All 12 production pipelines running normally</p>
+                        <p style="color: #27ae60; margin-top: 10px;"><strong>●</strong> Operational</p>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                        <h4>📊 Data Quality</h4>
+                        <p>Great Expectations validations passing</p>
+                        <p style="color: #27ae60; margin-top: 10px;"><strong>●</strong> 98.7% validation rate</p>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                        <h4>☁️ Infrastructure</h4>
+                        <p>Snowflake and AWS services healthy</p>
+                        <p style="color: #27ae60; margin-top: 10px;"><strong>●</strong> All systems green</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="validation" class="tab-content" style="display: none;">
+                <h3 style="margin-bottom: 20px;">Great Expectations Validation</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                    <div class="dag-status">
+                        <span class="dag-name">HL7 Schema Validation</span>
+                        <span class="status-badge status-success">Passed</span>
+                    </div>
+                    <div class="dag-status">
+                        <span class="dag-name">FHIR Format Check</span>
+                        <span class="status-badge status-success">Passed</span>
+                    </div>
+                    <div class="dag-status">
+                        <span class="dag-name">Data Completeness</span>
+                        <span class="status-badge status-running">Running</span>
+                    </div>
+                    <div class="dag-status">
+                        <span class="dag-name">Range Validation</span>
+                        <span class="status-badge status-success">Passed</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="compliance" class="tab-content" style="display: none;">
+                <h3 style="margin-bottom: 20px;">Regulatory Compliance</h3>
+                <div class="compliance-grid">
+                    <div class="compliance-item">
+                        <div class="compliance-score">100%</div>
+                        <div>HIPAA Compliance</div>
+                    </div>
+                    <div class="compliance-item">
+                        <div class="compliance-score">99.8%</div>
+                        <div>HL7 Standards</div>
+                    </div>
+                    <div class="compliance-item">
+                        <div class="compliance-score">100%</div>
+                        <div>FHIR Compliance</div>
+                    </div>
+                    <div class="compliance-item">
+                        <div class="compliance-score">98.9%</div>
+                        <div>Data Quality</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="airflow" class="tab-content" style="display: none;">
+                <h3 style="margin-bottom: 20px;">Airflow DAG Status</h3>
+                <div style="display: grid; gap: 10px;">
+                    <div class="dag-status">
+                        <span class="dag-name">daily_hl7_ingestion</span>
+                        <span class="status-badge status-success">Success</span>
+                    </div>
+                    <div class="dag-status">
+                        <span class="dag-name">fhir_validation_pipeline</span>
+                        <span class="status-badge status-running">Running</span>
+                    </div>
+                    <div class="dag-status">
+                        <span class="dag-name">snowflake_data_load</span>
+                        <span class="status-badge status-success">Success</span>
+                    </div>
+                    <div class="dag-status">
+                        <span class="dag-name">compliance_reporting</span>
+                        <span class="status-badge status-success">Success</span>
+                    </div>
+                    <div class="dag-status">
+                        <span class="dag-name">data_quality_checks</span>
+                        <span class="status-badge status-failed">Failed</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isLive = true;
+        let updateInterval;
+
+        // Realistic data patterns
+        const baseMetrics = {
+            records: 2400000,
+            successRate: 99.9,
+            latency: 89,
+            errorRate: 0.1
+        };
+
+        function getTimeBasedVariation() {
+            const hour = new Date().getHours();
+            // Lower activity at night, higher during business hours
+            if (hour >= 22 || hour <= 6) {
+                return 0.7; // Night time - lower activity
+            } else if (hour >= 9 && hour <= 17) {
+                return 1.2; // Business hours - higher activity  
+            } else {
+                return 1.0; // Regular activity
+            }
+        }
+
+        function updateMetrics() {
+            if (!isLive) return;
+
+            const variation = getTimeBasedVariation();
+            const randomFactor = 0.95 + Math.random() * 0.1; // ±5% variation
+            
+            // Records processed (varies by time of day)
+            const records = Math.floor(baseMetrics.records * variation * randomFactor);
+            document.getElementById('recordsValue').textContent = (records / 1000000).toFixed(1) + 'M';
+            
+            // Success rate (occasionally dips slightly)
+            let successRate = baseMetrics.successRate;
+            if (Math.random() < 0.1) { // 10% chance of slight dip
+                successRate = 99.2 + Math.random() * 0.7;
+            }
+            document.getElementById('successValue').textContent = successRate.toFixed(1) + '%';
+            
+            // Latency (increases when success rate drops)
+            let latency = baseMetrics.latency;
+            if (successRate < 99.5) {
+                latency += Math.random() * 50; // Higher latency during issues
+                document.getElementById('latencyCard').classList.add('alert');
+            } else {
+                document.getElementById('latencyCard').classList.remove('alert');
+            }
+            latency = Math.floor(latency * (0.8 + Math.random() * 0.4));
+            document.getElementById('latencyValue').textContent = latency + 'ms';
+            
+            // Error rate (correlated with success rate)
+            const errorRate = ((100 - successRate) / 10).toFixed(2);
+            document.getElementById('errorsValue').textContent = errorRate + '%';
+            
+            // Update change indicators
+            const changes = ['+12.3%', '+8.7%', '+15.2%', '-2.1%', '+0.8%'];
+            const directions = ['↗', '↘'];
+            
+            document.getElementById('recordsChange').innerHTML = 
+                `${directions[Math.floor(Math.random() * 2)]} ${changes[Math.floor(Math.random() * changes.length)]} vs yesterday`;
+        }
+
+        function toggleLiveUpdates() {
+            const btn = document.getElementById('toggleBtn');
+            const status = document.getElementById('statusText');
+            
+            isLive = !isLive;
+            
+            if (isLive) {
+                btn.innerHTML = '⏸️ Pause';
+                btn.classList.remove('paused');
+                status.textContent = 'Live Updates';
+                updateInterval = setInterval(updateMetrics, 3000);
+            } else {
+                btn.innerHTML = '▶️ Live';
+                btn.classList.add('paused');
+                status.textContent = 'Paused';
+                clearInterval(updateInterval);
+            }
+        }
+
+        function showTab(tabName) {
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.style.display = 'none');
+            
+            // Remove active class from all tabs
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab content
+            document.getElementById(tabName).style.display = 'block';
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+
+        // Initialize
+        document.getElementById('toggleBtn').addEventListener('click', toggleLiveUpdates);
+        updateInterval = setInterval(updateMetrics, 3000);
+        
+        // Initial update
+        updateMetrics();
+    </script>
+</body>
+</html>
